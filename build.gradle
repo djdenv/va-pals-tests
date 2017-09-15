@@ -1,0 +1,18 @@
+group 'va-pals'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    testCompile group: 'org.seleniumhq.selenium', name: 'selenium-java', version: '3.5.3'
+    testCompile group: 'org.apache.commons', name: 'commons-lang3', version: '3.6'
+    testCompile group: 'org.apache.commons', name: 'commons-text', version: '1.1'
+
+}
