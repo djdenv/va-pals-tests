@@ -3,30 +3,28 @@ package com.paraxialtech.vapals;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-public class SamiBackgroundTest {
+@SuppressWarnings("deprecation")
+class SamiBackgroundTest {
     private final WebDriver driver = new HtmlUnitDriver();
-    private final Set<String> ignoreFields = ImmutableSet.of("sbwcos"); //Temporarily ignore these fields so remaining tests can run.
-
-    @SuppressWarnings("deprecation")
-    private String randomString() {
-        return RandomStringUtils.randomAscii(5);
-    }
+    private final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
+    private final Set<String> ignoreFields = ImmutableSet.of(); //Temporarily ignore these fields so remaining tests can run. "sbwcos"
 
     private List<WebElement> findElements(final WebDriver driver, final String selector) {
         return driver.findElements(By.cssSelector(selector)).stream()
@@ -35,12 +33,16 @@ public class SamiBackgroundTest {
                 .collect(Collectors.toList());
     }
 
-    @TestFactory
-    public Iterator<DynamicTest> testAsciiPrintableCharactersForTextFields() {
-
+    @BeforeEach
+    void setUp() {
         //get the initial page and determine fields we'll be testing.
-        final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
         driver.get(baseUrl);
+
+    }
+
+    @TestFactory
+    Iterator<DynamicTest> testAsciiPrintableCharactersForTextFields() {
+
 
         final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
 
@@ -57,11 +59,8 @@ public class SamiBackgroundTest {
     }
 
     @TestFactory
-    public Iterator<DynamicTest> testSaveAllText() {
+    Iterator<DynamicTest> testSaveAllText() {
 
-        //get the initial page and determine fields we'll be testing.
-        final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
-        driver.get(baseUrl);
 
         final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
         return textFieldNames.stream().map(textFieldName -> DynamicTest.dynamicTest("Test save text " + textFieldName, () -> {
@@ -77,11 +76,8 @@ public class SamiBackgroundTest {
     }
 
     @TestFactory
-    public Iterator<DynamicTest> testSaveAllDropdowns() {
+    Iterator<DynamicTest> testSaveAllDropdowns() {
 
-        //get the initial page and determine fields we'll be testing.
-        final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
-        driver.get(baseUrl);
 
         final List<String> dropdownNames = findElements(driver, "select").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
         return dropdownNames.stream().map(dropdownName -> DynamicTest.dynamicTest("Test save dropdown " + dropdownName, () -> {
@@ -107,11 +103,8 @@ public class SamiBackgroundTest {
     }
 
     @TestFactory
-    public Iterator<DynamicTest> testSaveAllRadios() {
+    Iterator<DynamicTest> testSaveAllRadios() {
 
-        //get the initial page and determine fields we'll be testing.
-        final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
-        driver.get(baseUrl);
 
         final Set<String> radioElementGroups = findElements(driver, "input[type='radio']").stream().map(webElement -> webElement.getAttribute("name")).distinct().collect(Collectors.toSet());
         return radioElementGroups.stream().map(radioGroupName -> DynamicTest.dynamicTest("Test save radio " + radioGroupName, () -> {
@@ -133,11 +126,8 @@ public class SamiBackgroundTest {
     }
 
     @TestFactory
-    public Iterator<DynamicTest> testSaveAllTextAreas() {
+    Iterator<DynamicTest> testSaveAllTextAreas() {
 
-        //get the initial page and determine fields we'll be testing.
-        final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
-        driver.get(baseUrl);
 
         final Set<String> textAreaNames = findElements(driver, "textarea").stream().map(webElement -> webElement.getAttribute("name")).distinct().collect(Collectors.toSet());
         return textAreaNames.stream().map(textAreaName -> DynamicTest.dynamicTest("Test save textarea " + textAreaName, () -> {
@@ -160,11 +150,8 @@ public class SamiBackgroundTest {
 
 
     @TestFactory
-    public Iterator<DynamicTest> testSaveAllCheckboxes() {
+    Iterator<DynamicTest> testSaveAllCheckboxes() {
 
-        //get the initial page and determine fields we'll be testing.
-        final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
-        driver.get(baseUrl);
 
         final Set<String> checkboxNames = findElements(driver, "input[type='checkbox']").stream().map(webElement -> webElement.getAttribute("name")).distinct().collect(Collectors.toSet());
         return checkboxNames.stream().map(checkboxName -> DynamicTest.dynamicTest("Test save checkbox " + checkboxName, () -> {
@@ -185,39 +172,4 @@ public class SamiBackgroundTest {
         })).iterator();
     }
 
-
-    @Test
-    public void testSaveAllFields() throws Exception {
-        final Map<String, String> checkboxValues = new HashMap<>();
-
-        final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
-
-        driver.get(baseUrl);
-
-
-        //check all checkboxes
-        final List<WebElement> checkboxElements = findElements(driver, "input[type='checkbox']");
-        checkboxElements.forEach(webElement -> {
-            webElement.click();
-            checkboxValues.put(webElement.getAttribute("name"), webElement.getAttribute("value"));
-        });
-
-
-        driver.findElement(By.cssSelector("input[type='submit']")).submit();
-
-        //ASSERTIONS
-        driver.navigate().to(baseUrl); //reload the initial page
-
-
-        checkboxValues.forEach((fieldName, submittedValue) -> {
-            final WebElement checkbox = driver.findElement(By.cssSelector("input[type='checkbox'][name='" + fieldName + "'][value='" + submittedValue + "']"));
-            assertThat("No checkbox by name of " + fieldName, checkbox, notNullValue());
-            final String checked = checkbox.getAttribute("checked");
-            assertThat("Checkbox " + fieldName + " should be checked", checked, is("true"));
-        });
-
-
-        driver.close();
-
-    }
 }
