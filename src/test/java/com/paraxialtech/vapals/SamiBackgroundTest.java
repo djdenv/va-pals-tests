@@ -70,7 +70,6 @@ class SamiBackgroundTest {
         return fieldNames.stream().map(textFieldName -> DynamicTest.dynamicTest(prefix + textFieldName, () -> {
             final WebElement textField = driver.findElement(By.name(textFieldName));
             final String asciiText = baseValue;
-            System.out.println(asciiText);
             assertNotNull(textField, "Could not find field by name " + textFieldName);
             textField.clear();
             textField.sendKeys(asciiText);
