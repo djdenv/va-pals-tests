@@ -57,13 +57,13 @@ class SamiBackgroundTest {
     @TestFactory
     Iterator<DynamicTest> testAsciiCharactersForTextFields() {
         final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
-        return generateTextTests(textFieldNames, "Test ASCII", baseAsciiTestValue);
+        return generateTextTests(textFieldNames, "ASCII - ", baseAsciiTestValue);
     }
 
     @TestFactory
     Iterator<DynamicTest> testPrintableCharactersForTextFields() {
         final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
-        return generateTextTests(textFieldNames, "Test Printable ", basePrintableTestValue);
+        return generateTextTests(textFieldNames, "Printable - ", basePrintableTestValue);
     }
 
     Iterator<DynamicTest> generateTextTests(final List<String> fieldNames, final String prefix, final String baseValue) {
