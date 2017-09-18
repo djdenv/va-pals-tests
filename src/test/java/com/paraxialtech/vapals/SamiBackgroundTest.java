@@ -1,7 +1,6 @@
 package com.paraxialtech.vapals;
 
 import com.google.common.collect.ImmutableSet;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.text.RandomStringGenerator;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,11 +21,12 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@SuppressWarnings("deprecation")
 class SamiBackgroundTest {
     private final WebDriver driver = new HtmlUnitDriver();
     private final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
     private final Set<String> ignoreFields = ImmutableSet.of(); //Temporarily ignore these fields so remaining tests can run. "sbwcos"
+
+    private static final String ASCII_VALUE = "a Z0!\\\"#$%^&*()-./<>=?@[]_`{}~";
 
     private List<WebElement> findElements(final WebDriver driver, final String selector) {
         return driver.findElements(By.cssSelector(selector)).stream()
@@ -36,29 +36,27 @@ class SamiBackgroundTest {
     }
 
 
-    private String randomAsciiExt(int length) {
+    private String randomAsciiExt() {
 //        return new RandomStringGenerator.Builder().withinRange(32, 127).build().generate(length); //basic ASCII
-        return new RandomStringGenerator.Builder().withinRange(32, 255).build().generate(length);
-
+        return new RandomStringGenerator.Builder().withinRange(32, 255).build().generate(30);
     }
 
     @BeforeEach
     void setUp() {
         //get the initial page and determine fields we'll be testing.
         driver.get(baseUrl);
-
     }
 
     @TestFactory
     Iterator<DynamicTest> testAsciiCharactersForTextFields() {
         final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
-        return generateTextTests(textFieldNames, "ASCII - ", () -> "a Z0!\\\"#$%^&*()-./<>=?@[]_`{}~");
+        return generateTextTests(textFieldNames, "ASCII - ", () -> ASCII_VALUE);
     }
 
     @TestFactory
     Iterator<DynamicTest> testRandomCharactersForTextFields() {
         final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
-        return generateTextTests(textFieldNames, "ASCII - ", () -> randomAsciiExt(30));
+        return generateTextTests(textFieldNames, "ASCII - ", this::randomAsciiExt);
     }
 
     @TestFactory
@@ -67,7 +65,7 @@ class SamiBackgroundTest {
         return generateTextTests(textFieldNames, "Printable - ", () -> "È\u0089q§Òú_" + (char) 138);
     }
 
-    Iterator<DynamicTest> generateTextTests(final List<String> fieldNames, final String prefix, final Supplier<String> value) {
+    private Iterator<DynamicTest> generateTextTests(final List<String> fieldNames, final String prefix, final Supplier<String> value) {
         return fieldNames.stream().map(textFieldName -> DynamicTest.dynamicTest(prefix + textFieldName, () -> {
             final WebElement textField = driver.findElement(By.name(textFieldName));
             final String asciiText = value.get();
@@ -82,11 +80,10 @@ class SamiBackgroundTest {
 
     @TestFactory
     Iterator<DynamicTest> testSaveAllText() {
-
         final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
         return textFieldNames.stream().map(textFieldName -> DynamicTest.dynamicTest("Test save text " + textFieldName, () -> {
             final WebElement textField = driver.findElement(By.name(textFieldName));
-            final String asciiText = RandomStringUtils.randomAlphabetic(100);
+            final String asciiText = ASCII_VALUE;
             assertNotNull(textField, "Could not find field by name " + textFieldName);
             textField.clear();
             textField.sendKeys(asciiText);
@@ -98,8 +95,6 @@ class SamiBackgroundTest {
 
     @TestFactory
     Iterator<DynamicTest> testSaveAllDropdowns() {
-
-
         final List<String> dropdownNames = findElements(driver, "select").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
         return dropdownNames.stream().map(dropdownName -> DynamicTest.dynamicTest("Test save dropdown " + dropdownName, () -> {
             final WebElement dropdown = driver.findElement(By.name(dropdownName));
@@ -110,7 +105,6 @@ class SamiBackgroundTest {
 
             dropdown.submit();
             driver.navigate().to(baseUrl); //reload the initial page
-
 
             WebElement updatedDropdown = driver.findElement(By.name(dropdownName));
             assertNotNull(updatedDropdown, "No dropdown by name of " + dropdownName);
@@ -125,8 +119,6 @@ class SamiBackgroundTest {
 
     @TestFactory
     Iterator<DynamicTest> testSaveAllRadios() {
-
-
         final Set<String> radioElementGroups = findElements(driver, "input[type='radio']").stream().map(webElement -> webElement.getAttribute("name")).distinct().collect(Collectors.toSet());
         return radioElementGroups.stream().map(radioGroupName -> DynamicTest.dynamicTest("Test save radio " + radioGroupName, () -> {
 
@@ -141,22 +133,18 @@ class SamiBackgroundTest {
             assertNotNull(updatedOption, "No value selected for radio field " + radioGroupName);
             final String actual = updatedOption.getAttribute("value");
             assertThat("Incorrect value in radio field " + radioGroupName, actual, is(submittedValue));
-
-
         })).iterator();
     }
 
     @TestFactory
     Iterator<DynamicTest> testSaveAllTextAreas() {
-
-
         final Set<String> textAreaNames = findElements(driver, "textarea").stream().map(webElement -> webElement.getAttribute("name")).distinct().collect(Collectors.toSet());
         return textAreaNames.stream().map(textAreaName -> DynamicTest.dynamicTest("Test save textarea " + textAreaName, () -> {
 
             final WebElement textarea = driver.findElement(By.name(textAreaName));
             assertNotNull(textarea, "No textarea by name of " + textAreaName);
 
-            final String submittedValue = RandomStringUtils.randomAlphabetic(10) + "\n" + RandomStringUtils.randomAlphabetic(10) + "\n";
+            final String submittedValue = ASCII_VALUE + "\n\n\t" + ASCII_VALUE + "\n";
             textarea.clear();
             textarea.sendKeys(submittedValue);
             textarea.submit();
@@ -165,15 +153,12 @@ class SamiBackgroundTest {
             final WebElement updatedTextarea = driver.findElement(By.name(textAreaName));
             assertNotNull(updatedTextarea, "No textarea found by name of " + textAreaName);
             assertThat("Incorrect value in textarea field " + textAreaName, updatedTextarea.getText(), is(submittedValue.trim()));
-
         })).iterator();
     }
 
 
     @TestFactory
     Iterator<DynamicTest> testSaveAllCheckboxes() {
-
-
         final Set<String> checkboxNames = findElements(driver, "input[type='checkbox']").stream().map(webElement -> webElement.getAttribute("name")).distinct().collect(Collectors.toSet());
         return checkboxNames.stream().map(checkboxName -> DynamicTest.dynamicTest("Test save checkbox " + checkboxName, () -> {
 
@@ -184,13 +169,10 @@ class SamiBackgroundTest {
             checkbox.submit();
 
             driver.navigate().to(baseUrl); //reload the initial page
-
-
             final WebElement updatedCheckbox = driver.findElement(By.cssSelector("input[type='checkbox'][name='" + checkboxName + "'][value='" + submittedValue + "']"));
             assertNotNull(updatedCheckbox, "No checkbox by name of " + checkboxName);
             final String checked = updatedCheckbox.getAttribute("checked");
             assertThat("Checkbox " + checkboxName + " should be checked", checked, is("true"));
         })).iterator();
     }
-
 }
