@@ -15,6 +15,7 @@ import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -35,14 +36,8 @@ class SamiBackgroundTest {
     }
 
 
-    private final String baseAsciiTestValue = "a Z0!\\\"#$%^&*()-./<>=?@[]_`{}~";
-    private final String basePrintableTestValue = baseAsciiTestValue + "È\u0089q§Òú_" + (char) 138;
-
-    private String randomAscii(int length) {
-        return new RandomStringGenerator.Builder().withinRange(32, 127).build().generate(length);
-    }
-
     private String randomAsciiExt(int length) {
+//        return new RandomStringGenerator.Builder().withinRange(32, 127).build().generate(length); //basic ASCII
         return new RandomStringGenerator.Builder().withinRange(32, 255).build().generate(length);
 
     }
@@ -57,19 +52,25 @@ class SamiBackgroundTest {
     @TestFactory
     Iterator<DynamicTest> testAsciiCharactersForTextFields() {
         final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
-        return generateTextTests(textFieldNames, "ASCII - ", baseAsciiTestValue);
+        return generateTextTests(textFieldNames, "ASCII - ", () -> "a Z0!\\\"#$%^&*()-./<>=?@[]_`{}~");
+    }
+
+    @TestFactory
+    Iterator<DynamicTest> testRandomCharactersForTextFields() {
+        final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
+        return generateTextTests(textFieldNames, "ASCII - ", () -> randomAsciiExt(30));
     }
 
     @TestFactory
     Iterator<DynamicTest> testPrintableCharactersForTextFields() {
         final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
-        return generateTextTests(textFieldNames, "Printable - ", basePrintableTestValue);
+        return generateTextTests(textFieldNames, "Printable - ", () -> "È\u0089q§Òú_" + (char) 138);
     }
 
-    Iterator<DynamicTest> generateTextTests(final List<String> fieldNames, final String prefix, final String baseValue) {
+    Iterator<DynamicTest> generateTextTests(final List<String> fieldNames, final String prefix, final Supplier<String> value) {
         return fieldNames.stream().map(textFieldName -> DynamicTest.dynamicTest(prefix + textFieldName, () -> {
             final WebElement textField = driver.findElement(By.name(textFieldName));
-            final String asciiText = baseValue;
+            final String asciiText = value.get();
             assertNotNull(textField, "Could not find field by name " + textFieldName);
             textField.clear();
             textField.sendKeys(asciiText);
