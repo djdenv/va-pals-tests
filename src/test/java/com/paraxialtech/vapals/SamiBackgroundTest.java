@@ -26,7 +26,7 @@ class SamiBackgroundTest {
     private final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
     private final Set<String> ignoreFields = ImmutableSet.of(); //Temporarily ignore these fields so remaining tests can run. "sbwcos"
 
-    private static final String ASCII_VALUE = "a Z0!\\\"#$%^&*()-./<>=?@[]_`{}~";
+    private static final String ASCII_VALUE = "a Z  0!\\\"#$%^&*()-./<>=?@[]_`{}~";
 
     private List<WebElement> findElements(final WebDriver driver, final String selector) {
         return driver.findElements(By.cssSelector(selector)).stream()
