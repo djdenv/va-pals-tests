@@ -24,11 +24,14 @@ ext.junitLegacyVersion = '4.12'
 ext.junitVintageVersion = '4.12.0'
 ext.junitPlatformVersion = '1.0.0'
 ext.junitJupiterVersion = '5.0.0'
+ext.seleniumVersion = '3.5.3'
 
 dependencies {
-    testCompile group: 'org.seleniumhq.selenium', name: 'selenium-java', version: '3.5.3'
-    testCompile group: 'org.apache.commons', name: 'commons-lang3', version: '3.6'
-    testCompile group: 'org.apache.commons', name: 'commons-text', version: '1.1'
+    testCompile "io.github.bonigarcia:webdrivermanager:1.7.1"
+    testCompile "org.seleniumhq.selenium:selenium-java:$seleniumVersion"
+    testCompile "org.seleniumhq.selenium:selenium-chrome-driver:$seleniumVersion"
+    testCompile "org.apache.commons:commons-lang3:3.6"
+    testCompile "org.apache.commons:commons-text:1.1"
 
     //JUNIT 4
 //    testCompile("junit:junit:${junitLegacyVersion}")
@@ -37,5 +40,7 @@ dependencies {
     //JUNIT 5
     testCompile("org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}")
     testCompile("org.junit.platform:junit-platform-runner:${junitPlatformVersion}")
+    testCompile("org.jsoup:jsoup:1.7.2")
+
     testRuntime("org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}")
 }

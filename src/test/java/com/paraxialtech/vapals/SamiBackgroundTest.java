@@ -1,8 +1,16 @@
 package com.paraxialtech.vapals;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.apache.commons.lang3.RandomUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.RandomStringGenerator;
+import org.hamcrest.CoreMatchers;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -11,19 +19,27 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 class SamiBackgroundTest {
     private final WebDriver driver = new HtmlUnitDriver();
-    private final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
+
+    private final String baseUrl = "http://avicenna.vistaexpertise.net:9080/form?form=sbform&studyid=PARAXIAL01";
+    //    private final String baseUrl = "http://54.172.139.35:9080/form?form=sbform&studyId=PARAXIAL01";
+    //    private final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
+//    private final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
     private final Set<String> ignoreFields = ImmutableSet.of(); //Temporarily ignore these fields so remaining tests can run. "sbwcos"
 
     private static final String ASCII_VALUE = "a Z  0!\\\"#$%^&*()-./<>=?@[]_`{}~";
@@ -48,20 +64,81 @@ class SamiBackgroundTest {
     }
 
     @TestFactory
+    Iterator<DynamicTest> testBasicAccessibility() {
+        final String pageSource = driver.getPageSource();
+        final Document doc = Jsoup.parse(pageSource);
+
+        Elements inputElements = doc.select("input,select,textarea");
+        List<DynamicTest> tests = newArrayList();
+
+        tests.addAll(inputElements.stream().map(element -> DynamicTest.dynamicTest("has name attribute: " + element.toString(), () -> {
+            assertThat("name attribute is missing or empty: " + element.toString(), element.attr("name"), CoreMatchers.not(""));
+        })).collect(Collectors.toList()));
+
+        tests.addAll(inputElements.stream().map(element -> DynamicTest.dynamicTest("has id attribute: " + element.toString(), () -> {
+            assertThat("id attribute is missing or empty: " + element.toString(), element.attr("id"), CoreMatchers.not(""));
+        })).collect(Collectors.toList()));
+
+        tests.addAll(inputElements.stream().map(element -> DynamicTest.dynamicTest("has label: " + element.toString(), () -> {
+            final String elementId = element.attr("id");
+            if (StringUtils.isNotBlank(elementId)) {
+                //could check for a wrapped label like this: element.parents().stream().anyMatch(parent -> parent.tagName().equals("label")), but that's not a preferred method
+                assertThat("field with id=" + elementId + "missing label", doc.getElementsByAttributeValue("for", elementId).size(), is(1));
+            }
+            else {
+                fail("field with id=" + elementId + "missing label");
+            }
+        })).collect(Collectors.toList()));
+
+        return tests.iterator();
+    }
+
+    @TestFactory
+    Iterator<DynamicTest> testDateFields() {
+
+        Document doc = Jsoup.parse(driver.getPageSource());
+
+        final List<String> fieldNames = doc.getElementsByClass("ddmmmyyyy").stream().map(element -> element.attr("name")).collect(Collectors.toList());
+        return fieldNames.stream().map(textFieldName -> DynamicTest.dynamicTest("testDateField: " + textFieldName, () -> {
+
+            final DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy"); //TODO: What is the actual expected output format for date fields?
+            //format of this set is K: input, V: expected output
+            final String today = LocalDate.now().format(dateFormat);
+            Set<Pair<String, String>> tests = Sets.newHashSet(
+                    ImmutablePair.of(today, today),
+                    ImmutablePair.of("T", today),
+                    ImmutablePair.of("T-1", LocalDate.now().minusDays(1).format(dateFormat))
+            );
+
+            for (Pair<String, String> test : tests) {
+                final WebElement textField = driver.findElement(By.name(textFieldName));
+                String input = test.getKey();
+                String expected = test.getValue();
+                textField.clear();
+                textField.sendKeys(input);
+                textField.submit();
+                driver.navigate().to(baseUrl); //reload the initial page
+                assertThat("Incorrect value for field " + textFieldName + " when using " + input + " as input", driver.findElement(By.name(textFieldName)).getAttribute("value"), is(expected));
+            }
+
+        })).iterator();
+    }
+
+    @TestFactory
     Iterator<DynamicTest> testAsciiCharactersForTextFields() {
-        final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
+        final List<String> textFieldNames = findElements(driver, "input[type='text'][name]").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
         return generateTextTests(textFieldNames, "ASCII - ", () -> ASCII_VALUE);
     }
 
     @TestFactory
     Iterator<DynamicTest> testRandomCharactersForTextFields() {
-        final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
+        final List<String> textFieldNames = findElements(driver, "input[type='text'][name]").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
         return generateTextTests(textFieldNames, "ASCII - ", this::randomAsciiExt);
     }
 
     @TestFactory
     Iterator<DynamicTest> testPrintableCharactersForTextFields() {
-        final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
+        final List<String> textFieldNames = findElements(driver, "input[type='text'][name]").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
         return generateTextTests(textFieldNames, "Printable - ", () -> "È\u0089q§Òú_" + (char) 138);
     }
 
@@ -123,16 +200,18 @@ class SamiBackgroundTest {
         return radioElementGroups.stream().map(radioGroupName -> DynamicTest.dynamicTest("Test save radio " + radioGroupName, () -> {
 
             final List<WebElement> radioOptions = findElements(driver, "input[type='radio'][name='" + radioGroupName + "']");
-            final WebElement option = radioOptions.get(RandomUtils.nextInt(0, radioOptions.size())); //pick random option
-            String submittedValue = option.getAttribute("value");
-            option.click();
-            option.submit();
+            for (WebElement option : radioOptions) {
+                String submittedValue = option.getAttribute("value");
+                option.click();
+                option.submit();
 
-            driver.navigate().to(baseUrl); //reload the initial page
-            final WebElement updatedOption = driver.findElement(By.cssSelector("input[type=radio][name=" + radioGroupName + "]:checked"));
-            assertNotNull(updatedOption, "No value selected for radio field " + radioGroupName);
-            final String actual = updatedOption.getAttribute("value");
-            assertThat("Incorrect value in radio field " + radioGroupName, actual, is(submittedValue));
+                driver.navigate().to(baseUrl); //reload the initial page
+                final WebElement updatedOption = driver.findElement(By.cssSelector("input[type=radio][name=" + radioGroupName + "]:checked"));
+                assertNotNull(updatedOption, "No value selected for radio field " + radioGroupName);
+                final String actual = updatedOption.getAttribute("value");
+                assertThat("Incorrect value in radio field " + radioGroupName, actual, is(submittedValue));
+            }
+
         })).iterator();
     }
 
