@@ -25,6 +25,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -328,5 +329,25 @@ class SamiBackgroundTest {
             final String checked = updatedCheckbox.getAttribute("checked");
             assertThat("Checkbox " + checkboxName + " should be checked", checked, is("true"));
         })).iterator();
+    }
+
+    @Test
+    void testElementsHaveUniqueName() {
+
+        String[] duplicateNames =
+            // 1) Get all <input>, <select>, and <textarea> elements
+            findElements(driver, "input,select,textarea").stream()
+            // 2) Reduce the elements to their names
+            .map(webElement -> webElement.getAttribute("name"))
+            // 3) Count each name
+            .collect(Collectors.groupingBy(name -> name, Collectors.counting()))
+            .entrySet().stream()
+            // 4) Filter for duplicate names
+            .filter(entry -> entry.getValue() > 1)
+            // 5) Pretty print the 'name':count
+            .map(entry -> "'" + entry.getKey() + "':" + entry.getValue())
+            .toArray(String[]::new);
+
+        assertThat("Duplicate element name: " + String.join(", ", duplicateNames), duplicateNames.length, is(0));
     }
 }
