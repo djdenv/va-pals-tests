@@ -335,8 +335,8 @@ class SamiBackgroundTest {
     void testElementsHaveUniqueName() {
 
         String[] duplicateNames =
-            // 1) Get all <select>, <textarea>, and <input> elements - provided the input elements are NOT radio buttons
-            findElements(driver, "input:not([type='radio']),select,textarea").stream()
+            // 1) Get all <select>, <textarea>, and <input> elements - provided the <input> elements are NOT radio or submit buttons
+            findElements(driver, "input:not([type='radio']):not([type='submit']),select,textarea").stream()
             // 2) Reduce the elements to their names
             .map(webElement -> webElement.getAttribute("name"))
             // 3) Count each name
