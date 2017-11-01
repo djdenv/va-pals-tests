@@ -13,6 +13,8 @@ apply plugin: 'java'
 apply plugin: 'idea'
 apply plugin: 'org.junit.platform.gradle.plugin'
 apply plugin: 'jacoco'
+apply plugin: 'eclipse'
+apply plugin: 'application'
 
 sourceCompatibility = 1.8
 
@@ -25,6 +27,10 @@ ext.junitVintageVersion = '4.12.0'
 ext.junitPlatformVersion = '1.0.0'
 ext.junitJupiterVersion = '5.0.0'
 ext.seleniumVersion = '3.5.3'
+ext.expectItVersion = '0.8.3'
+ext.jscVersion = '0.1.54'
+
+mainClassName  = 'com.paraxialtech.vapals.WebExpectTest'
 
 dependencies {
     testCompile "io.github.bonigarcia:webdrivermanager:1.7.1"
@@ -43,4 +49,17 @@ dependencies {
     testCompile("org.jsoup:jsoup:1.7.2")
 
     testRuntime("org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}")
+
+    // ExpectIt
+    testCompile("net.sf.expectit:expectit-core:${expectItVersion}")
+    testCompile("com.jcraft:jsch:${jscVersion}")
+
+    testRuntime("net.sf.expectit:expectit-core:${expectItVersion}")
+    testRuntime("com.jcraft:jsch:${jscVersion}")
+
+    compile("net.sf.expectit:expectit-core:${expectItVersion}")
+    compile("com.jcraft:jsch:${jscVersion}")
+
+    runtime("net.sf.expectit:expectit-core:${expectItVersion}")
+    runtime("com.jcraft:jsch:${jscVersion}")
 }
