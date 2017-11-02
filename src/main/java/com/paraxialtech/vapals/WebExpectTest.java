@@ -12,9 +12,13 @@ import com.jcraft.jsch.Session;
 import net.sf.expectit.Expect;
 import net.sf.expectit.ExpectBuilder;
 import net.sf.expectit.Result;
+import net.sf.expectit.filter.Filters;
+import net.sf.expectit.matcher.Matcher;
 import net.sf.expectit.matcher.Matchers;
 
 public class WebExpectTest {
+    private static final String URL = "http://avicenna.vistaexpertise.net:9080/form?form=sbform&studyId=%s";
+    private static final String STUDY_ID = "XX0001"; //"PARAXIAL01"';
     private static final String baseUrl = "http://avicenna.vistaexpertise.net:9080/form?form=sbform&studyid=PARAXIAL01";
 //    private static WebDriver driver;
 
@@ -53,6 +57,7 @@ public class WebExpectTest {
         Channel channel = null;
 
         try {
+            // 1) Login
             JSch jSch = new JSch();
             jSch.addIdentity("../../.ssh/id_rsa_paraxial");
             session = jSch.getSession("kjpowers", "avicenna.vistaexpertise.net");
@@ -63,22 +68,73 @@ public class WebExpectTest {
             channel = session.openChannel("shell");
             channel.connect();
             System.out.println("connected...");
+
+            // 2) Set up the Expect object
             Expect expect = new ExpectBuilder()
                     .withOutput(channel.getOutputStream())
                     .withInputs(channel.getInputStream(), channel.getExtInputStream())
                     .withEchoOutput(System.out)
                     .withEchoInput(System.err)
-//                    .withInputFilters(removeColors(), removeNonPrintable())
+                    .withInputFilters(Filters.removeColors(), Filters.removeNonPrintable())
 //                    .withExceptionOnFailure()
                     .withTimeout(10, TimeUnit.SECONDS)
                     .build();
 
-//            expect.expect(contains("[RETURN]"));
-            Result r = expect.expect(Matchers.contains("~$$"));
-            if (r.isSuccessful()) {
-                System.out.println("found a command prompt...");
+            // 3) Get to FileMan
+            expect.expect(Matchers.contains("~$")).group();
+            expect.sendLine("osehra");
+
+            expect.expect(Matchers.contains("~$")).group();
+            expect.sendLine("mumps -dir");
+
+            expect.expect(Matchers.contains(">")).group();
+            expect.sendLine("SET DUZ=1");
+
+            expect.expect(Matchers.contains(">")).group();
+            expect.sendLine("DO Q^DI");
+
+            // 4) Step through the SAMI BACKGROUND form
+            expect.expect(Matchers.contains("Select OPTION:")).group();
+            expect.sendLine("1");
+
+            expect.expect(Matchers.contains("Input to what File:")).group();
+            expect.sendLine("SAMI BACKGROUND");
+
+            expect.expect(Matchers.contains("EDIT WHICH FIELD:")).group();
+            expect.sendLine("ALL");
+
+            expect.expect(Matchers.contains("Select SAMI BACKGROUND STUDY ID:")).group();
+            expect.sendLine(STUDY_ID);
+
+            Matcher<Result> matcherDone = Matchers.contains("Select OPTION:");
+            Matcher<Result> matcherItem = Matchers.regexp("[\r\n]([^:]+):(?: (.+)//)?");
+            while (true) {
+                Result result = expect.expect(Matchers.anyOf(matcherDone, matcherItem));
+                if (matcherDone.matches(result.group(), false).isSuccessful()) {
+                    break;
+                }
+
+                System.out.print(">>" + result.groupCount() + ">>");
+                for (int i = 1 ; i <= result.groupCount() ; i++) {
+                    System.out.print(result.group(i) + ",");
+                }
+                System.out.println();
+
+                expect.sendLine();
             }
+//          expect.expect(Matchers.contains("Select OPTION:")).group();
+            expect.sendLine("^");
+
+            // 5) Quit
+            expect.expect(Matchers.contains(">")).group();
+            expect.sendLine("HALT");
+
+            expect.expect(Matchers.contains("~$")).group();
             expect.sendLine("exit");
+
+            expect.expect(Matchers.contains("~$")).group();
+            expect.sendLine("exit");
+
             expect.expect(Matchers.eof());
 //            expect.sendLine();
 //            String ipAddress = expect.expect(regexp("Trying (.*)\\.\\.\\.")).group(1);
