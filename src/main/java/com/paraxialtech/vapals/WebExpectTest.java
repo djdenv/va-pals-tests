@@ -76,34 +76,34 @@ public class WebExpectTest {
                     .withEchoOutput(System.out)
                     .withEchoInput(System.err)
                     .withInputFilters(Filters.removeColors(), Filters.removeNonPrintable())
-//                    .withExceptionOnFailure()
+                    .withExceptionOnFailure()
                     .withTimeout(10, TimeUnit.SECONDS)
                     .build();
 
             // 3) Get to FileMan
-            expect.expect(Matchers.contains("~$")).group();
+            expect.expect(Matchers.contains("~$f"));
             expect.sendLine("osehra");
 
-            expect.expect(Matchers.contains("~$")).group();
+            expect.expect(Matchers.contains("~$"));
             expect.sendLine("mumps -dir");
 
-            expect.expect(Matchers.contains(">")).group();
+            expect.expect(Matchers.contains(">"));
             expect.sendLine("SET DUZ=1");
 
-            expect.expect(Matchers.contains(">")).group();
+            expect.expect(Matchers.contains(">"));
             expect.sendLine("DO Q^DI");
 
             // 4) Step through the SAMI BACKGROUND form
-            expect.expect(Matchers.contains("Select OPTION:")).group();
+            expect.expect(Matchers.contains("Select OPTION:"));
             expect.sendLine("1");
 
-            expect.expect(Matchers.contains("Input to what File:")).group();
+            expect.expect(Matchers.contains("Input to what File:"));
             expect.sendLine("SAMI BACKGROUND");
 
-            expect.expect(Matchers.contains("EDIT WHICH FIELD:")).group();
+            expect.expect(Matchers.contains("EDIT WHICH FIELD:"));
             expect.sendLine("ALL");
 
-            expect.expect(Matchers.contains("Select SAMI BACKGROUND STUDY ID:")).group();
+            expect.expect(Matchers.contains("Select SAMI BACKGROUND STUDY ID:"));
             expect.sendLine(STUDY_ID);
 
             Matcher<Result> matcherDone = Matchers.contains("Select OPTION:");
@@ -122,17 +122,17 @@ public class WebExpectTest {
 
                 expect.sendLine();
             }
-//          expect.expect(Matchers.contains("Select OPTION:")).group();
+//          expect.expect(Matchers.contains("Select OPTION:"));
             expect.sendLine("^");
 
             // 5) Quit
-            expect.expect(Matchers.contains(">")).group();
+            expect.expect(Matchers.contains(">"));
             expect.sendLine("HALT");
 
-            expect.expect(Matchers.contains("~$")).group();
+            expect.expect(Matchers.contains("~$"));
             expect.sendLine("exit");
 
-            expect.expect(Matchers.contains("~$")).group();
+            expect.expect(Matchers.contains("~$"));
             expect.sendLine("exit");
 
             expect.expect(Matchers.eof());
