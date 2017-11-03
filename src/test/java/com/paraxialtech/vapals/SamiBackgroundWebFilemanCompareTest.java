@@ -2,6 +2,10 @@ package com.paraxialtech.vapals;
 
 import java.awt.GraphicsEnvironment;
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.TemporalQueries;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -12,8 +16,6 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterAll;
@@ -51,6 +53,111 @@ class SamiBackgroundWebFilemanCompareTest {
     private static final List<String> STUDY_IDS = Arrays.asList( /*"PARAXIAL01",*/
                                                                  "XX0001" );
     private static final String FILEMAN_FORM = "SAMI BACKGROUND";
+    private static final Map<String, String> WEB_FILEMAN_KEY_MAP = new HashMap<String, String>();
+    private static final DateTimeFormatter WEB_DATE_FORMAT = new DateTimeFormatterBuilder().parseCaseInsensitive().appendPattern("dd/MMM/yyyy").toFormatter();
+    private static final DateTimeFormatter FILEMAN_DATE_FORMAT = new DateTimeFormatterBuilder().parseCaseInsensitive().appendPattern("MMM d[d],yyyy").toFormatter();
+
+    static {
+        WEB_FILEMAN_KEY_MAP.put("sbdob",    "DATE OF BIRTH");
+        WEB_FILEMAN_KEY_MAP.put("sbage",    "AGE");
+        WEB_FILEMAN_KEY_MAP.put("sbdop",    "INTAKE DATE");
+        WEB_FILEMAN_KEY_MAP.put("sbocc",    "OCCUPATION");
+        WEB_FILEMAN_KEY_MAP.put("sboccc",   "OCCUPATION CODE");
+        WEB_FILEMAN_KEY_MAP.put("sbsex",    "SEX");
+        WEB_FILEMAN_KEY_MAP.put("sbph",     "HEIGHT");
+        WEB_FILEMAN_KEY_MAP.put("sbphu",    "HEIGHT UNITS");
+        WEB_FILEMAN_KEY_MAP.put("sbpw",     "WEIGHT");
+        WEB_FILEMAN_KEY_MAP.put("sbpwu",    "WEIGHT UNITS");
+        WEB_FILEMAN_KEY_MAP.put("sbbmi",    "BMI");
+        WEB_FILEMAN_KEY_MAP.put("sbet",     "ETHNICITY");
+        WEB_FILEMAN_KEY_MAP.put("sbrc",     "RACE");
+        WEB_FILEMAN_KEY_MAP.put("sbrcs",    "RACE (SPECIFY)");
+        WEB_FILEMAN_KEY_MAP.put("sbed",     "LEVEL OF EDUCATION");
+        WEB_FILEMAN_KEY_MAP.put("sbmly",    "MILITARY");
+        WEB_FILEMAN_KEY_MAP.put("sbmlyo",   "BRANCH");
+        WEB_FILEMAN_KEY_MAP.put("sbmeq",    "SCAN ORDERED");
+        WEB_FILEMAN_KEY_MAP.put("sbopnpi",  "PRACTITIONER NPI");
+        WEB_FILEMAN_KEY_MAP.put("sbdsd",    "SHARED DECISION");
+        WEB_FILEMAN_KEY_MAP.put("sboppy",   "PRACTITIONER PACK YEARS");
+        WEB_FILEMAN_KEY_MAP.put("sbopss",   "PRACTITIONER SMOKING STATUS");
+        WEB_FILEMAN_KEY_MAP.put("sbopqy",   "PRACTITIONER QUIT YEARS");
+        WEB_FILEMAN_KEY_MAP.put("sboas",    "PRACTITIONER ASYMPTOMATIC");
+        WEB_FILEMAN_KEY_MAP.put("sbopci",   "CLINICAL INFORMATION");
+        WEB_FILEMAN_KEY_MAP.put("sbfc",     "FAMILY HISTORY OF LUNG CANCER");
+        WEB_FILEMAN_KEY_MAP.put("sbfcm",    "LUNG CANCER FATHER");
+        WEB_FILEMAN_KEY_MAP.put("sbfcf",    "LUNG CANCER MOTHER");
+        WEB_FILEMAN_KEY_MAP.put("sbfcs",    "LUNG CANCER SIBLING");
+        WEB_FILEMAN_KEY_MAP.put("sbhco",    "ALL OTHER CANCERS");
+        WEB_FILEMAN_KEY_MAP.put("sbhcdod",  "OTHER CANCERS WHEN");
+        WEB_FILEMAN_KEY_MAP.put("snhcpbo",  "OTHER CANCERS SITE");
+        WEB_FILEMAN_KEY_MAP.put("smbpa",    "ASTHMA");
+        WEB_FILEMAN_KEY_MAP.put("sbmpat",   "ASTHMA TREATED");
+        WEB_FILEMAN_KEY_MAP.put("sbmpc",    "EMPHYSEMA OR COPD");
+        WEB_FILEMAN_KEY_MAP.put("sbmpht",   "HYPERTENSION");
+        WEB_FILEMAN_KEY_MAP.put("sbmphtt",  "HYPERTENSION TREATED");
+        WEB_FILEMAN_KEY_MAP.put("sbmphtsw", "HYPERTENSION SINCE");
+        WEB_FILEMAN_KEY_MAP.put("sbmphthv", "HYPERTENSION HIGHEST VALUE");
+        WEB_FILEMAN_KEY_MAP.put("sbmphc",   "HIGH CHOLESTEROL");
+        WEB_FILEMAN_KEY_MAP.put("sbmpct",   "HIGH CHOLESTEROL TREATED");
+        WEB_FILEMAN_KEY_MAP.put("sbmpas",   "ANGIOPLASTY OR STENT");
+        WEB_FILEMAN_KEY_MAP.put("sbmpasw",  "ANGIOPLASTY WHEN");
+        WEB_FILEMAN_KEY_MAP.put("sbmpast",  "ANGIOPLASTY WHERE");
+        WEB_FILEMAN_KEY_MAP.put("sbmpmi",   "MI");
+        WEB_FILEMAN_KEY_MAP.put("sbmpmid",  "MI WHEN");
+        WEB_FILEMAN_KEY_MAP.put("sbmpmiw",  "MI WHERE");
+        WEB_FILEMAN_KEY_MAP.put("sbmps",    "STROKE");
+        WEB_FILEMAN_KEY_MAP.put("sbmpsd",   "STROKE WHEN");
+        WEB_FILEMAN_KEY_MAP.put("sbmpsw",   "STROKE WHERE");
+        WEB_FILEMAN_KEY_MAP.put("sbmppv",   "PERIPHERAL VASCULAR DISEASE");
+        WEB_FILEMAN_KEY_MAP.put("sbmpd",    "DIABETES");
+        WEB_FILEMAN_KEY_MAP.put("sbmpdw",   "DIABETES AGE");
+        WEB_FILEMAN_KEY_MAP.put("sbmpdt",   "DIABETES TREATED");
+        WEB_FILEMAN_KEY_MAP.put("sbmpld",   "LIVER DISEASE");
+        WEB_FILEMAN_KEY_MAP.put("sbmplds",  "LIVER SEVERITY");
+        WEB_FILEMAN_KEY_MAP.put("sbmprd",   "RENAL DISEASE");
+        WEB_FILEMAN_KEY_MAP.put("sbmprds",  "RENAL SEVERITY");
+        WEB_FILEMAN_KEY_MAP.put("sbwc",     "LUNG CANCER SYMPTOMS");
+        WEB_FILEMAN_KEY_MAP.put("sbact",    "CHEST CT WHEN");
+        WEB_FILEMAN_KEY_MAP.put("sbahcl",   "CHEST CT WHERE");
+        WEB_FILEMAN_KEY_MAP.put("sbahpft",  "PULMONARY FUNCTION TEST");
+        WEB_FILEMAN_KEY_MAP.put("sbfev1",   "FEV1 (L/s)");
+        WEB_FILEMAN_KEY_MAP.put("sbfvc",    "FVC (L)");
+        WEB_FILEMAN_KEY_MAP.put("sbffr",    "FEV1/FVC (%)");
+        WEB_FILEMAN_KEY_MAP.put("sbcop",    "DIFFUSION CAPACITY");
+        WEB_FILEMAN_KEY_MAP.put("sbaha",    "ASBESTOS EXPOSURE");
+        WEB_FILEMAN_KEY_MAP.put("sbahaoo",  "ASBESTOS OTHER SPECIFY");
+        WEB_FILEMAN_KEY_MAP.put("sbsas",    "SMOKING AGE");
+        WEB_FILEMAN_KEY_MAP.put("sbshsa",   "SMOKED IN PAST MONTH");
+        WEB_FILEMAN_KEY_MAP.put("sbsdlcd",  "FORMER DAYS PER WEEK");
+        WEB_FILEMAN_KEY_MAP.put("sbfppd",   "FORMER PPD");
+        WEB_FILEMAN_KEY_MAP.put("sbfdur",   "FORMER DURATION");
+        WEB_FILEMAN_KEY_MAP.put("sbcdpw",   "CURRENT DAYS PER WEEK");
+        WEB_FILEMAN_KEY_MAP.put("sbcppd",   "CURRENT PPD");
+        WEB_FILEMAN_KEY_MAP.put("sbcdur",   "CURRENT DURATION");
+        WEB_FILEMAN_KEY_MAP.put("sbntpy",   "TOTAL PACK YEARS");
+        WEB_FILEMAN_KEY_MAP.put("sbqttq",   "TRIED TO QUIT");
+        WEB_FILEMAN_KEY_MAP.put("sbqttqtb", "TRIED HOW MANY TIMES");
+        WEB_FILEMAN_KEY_MAP.put("sbqly2",   "QUIT PAST 12 MONTHS");
+        WEB_FILEMAN_KEY_MAP.put("sbqst",    "THINKING OF QUITTING");
+        WEB_FILEMAN_KEY_MAP.put("sbcpd",    "CESSATION PACKET");
+        WEB_FILEMAN_KEY_MAP.put("sbhsyh",   "SMOKING ALLOWED HOME");
+        WEB_FILEMAN_KEY_MAP.put("sbmsy",    "MOTHER SMOKE UNDER 7");
+        WEB_FILEMAN_KEY_MAP.put("sbmst",    "MOTHER SMOKE 7-18");
+        WEB_FILEMAN_KEY_MAP.put("sbosy",    "HOME CHILDHOOD OTHER");
+        WEB_FILEMAN_KEY_MAP.put("sbslws",   "SECONDHAND CURRENT");
+        WEB_FILEMAN_KEY_MAP.put("sbhso",    "ECONDHAND HOME ADULT");
+        WEB_FILEMAN_KEY_MAP.put("sbsfb1",   "GENERAL HEALTH");
+        WEB_FILEMAN_KEY_MAP.put("sbsfb2",   "HEALTH ACTIVITY LIMITS");
+        WEB_FILEMAN_KEY_MAP.put("sbsfb3",   "HEALTH DAILY WORK");
+        WEB_FILEMAN_KEY_MAP.put("sbsfb4",   "BODILY PAIN");
+        WEB_FILEMAN_KEY_MAP.put("sbsfb5",   "ENERGY");
+        WEB_FILEMAN_KEY_MAP.put("sbsfb6",   "HEALTH SOCIAL LIMITS");
+        WEB_FILEMAN_KEY_MAP.put("sbsfb7",   "HEALTH EMOTIONAL");
+        WEB_FILEMAN_KEY_MAP.put("sbsfb8",   "HEALTH DAILY ACTIVITIES");
+        WEB_FILEMAN_KEY_MAP.put("sbcfs",    "CONSENT SIGNED");
+        WEB_FILEMAN_KEY_MAP.put("sbdoc",    "CONSENT DATE");
+        WEB_FILEMAN_KEY_MAP.put("sbioc",    "CONSENT OBTAINED BY");
+    }
 
     @BeforeAll
     public static void setUp() {
@@ -72,13 +179,6 @@ class SamiBackgroundWebFilemanCompareTest {
 
     private final Set<String> ignoreFields = ImmutableSet.of(); //Temporarily ignore these fields so remaining tests can run. "sbwcos"
 
-    private List<WebElement> findElements(final WebDriver driver, final String selector) {
-        return driver.findElements(By.cssSelector(selector)).stream()
-                .filter(WebElement::isEnabled)
-                .filter(webElement -> !ignoreFields.contains(webElement.getAttribute("name")))
-                .collect(Collectors.toList());
-    }
-
     @TestFactory
     Iterator<DynamicTest> testWebValuesMatchFilemanValues() {
         List<DynamicTest> tests = new ArrayList<>();
@@ -90,7 +190,7 @@ class SamiBackgroundWebFilemanCompareTest {
                     final Map<String, String> filemanValues = getFilemanValues(studyId);
 
                     final StringBuilder sbMessage = new StringBuilder();
-                    for (final Entry<String, String> entry : getKeyMap().entrySet()) {
+                    for (final Entry<String, String> entry : WEB_FILEMAN_KEY_MAP.entrySet()) {
                         if (webValues.containsKey(entry.getKey())) {
                             if (!filemanValues.containsKey(entry.getValue()) ||
                                 !webValues.get(entry.getKey()).equals(filemanValues.get(entry.getValue()))) {
@@ -127,7 +227,7 @@ class SamiBackgroundWebFilemanCompareTest {
             if (name == null || name.trim().length() == 0) {
                 continue;
             }
-            webValues.put(name, webElement.getAttribute("value"));
+            webValues.put(name, tryParseDate(WEB_DATE_FORMAT, webElement.getAttribute("value")));
         }
 
         return webValues;
@@ -197,7 +297,7 @@ class SamiBackgroundWebFilemanCompareTest {
                     break;
                 }
 
-                filemanValues.put(result.group(1), result.groupCount() == 1 ? "" : result.group(2));
+                filemanValues.put(result.group(1), result.groupCount() == 1 ? "" : tryParseDate(FILEMAN_DATE_FORMAT, result.group(2)));
                 expect.sendLine();
             }
 //            expect.expect(Matchers.contains("Select OPTION:"));
@@ -232,24 +332,15 @@ class SamiBackgroundWebFilemanCompareTest {
         return filemanValues;
     }
 
-    private final Map<String, String> getKeyMap() {
-        final Map<String, String> webFilemanKeyMap = new HashMap<>();
-        webFilemanKeyMap.put("sbdob", "DATE OF BIRTH");
-        webFilemanKeyMap.put("sbage", "AGE");
-        webFilemanKeyMap.put("sbocc", "OCCUPATION");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-//        webFilemanKeyMap.put("", "");
-
-        return webFilemanKeyMap;
+    private final String tryParseDate(final DateTimeFormatter fmt, final String val) {
+        if (val == null ) {
+            return null;
+        }
+        try {
+            return fmt.parse(val, TemporalQueries.localDate()).format(DateTimeFormatter.ISO_DATE);
+        }
+        catch (DateTimeParseException e) {
+            return val;
+        }
     }
 }

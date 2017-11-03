@@ -1,6 +1,10 @@
 package com.paraxialtech.vapals;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.TemporalQueries;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -81,7 +85,7 @@ public class WebExpectTest {
                     .build();
 
             // 3) Get to FileMan
-            expect.expect(Matchers.contains("~$f"));
+            expect.expect(Matchers.contains("~$"));
             expect.sendLine("osehra");
 
             expect.expect(Matchers.contains("~$"));
@@ -116,7 +120,11 @@ public class WebExpectTest {
 
                 System.out.print(">>" + result.groupCount() + ">>");
                 for (int i = 1 ; i <= result.groupCount() ; i++) {
-                    System.out.print(result.group(i) + ",");
+                    String val = result.group(i);
+                    if (i == 2) {
+                        val = tryParseDate(val);
+                    }
+                    System.out.print(val + ",");
                 }
                 System.out.println();
 
@@ -158,6 +166,24 @@ public class WebExpectTest {
             if (session != null) {
                 session.disconnect();
             }
+        }
+    }
+
+    private final String tryParseDate(final String val) {
+        if (val == null ) {
+            return null;
+        }
+        try {
+            return
+                new DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendPattern("MMM d[d],yyyy")
+                    .toFormatter()
+                    .parse(val, TemporalQueries.localDate())
+                    .format(DateTimeFormatter.ISO_DATE);
+        }
+        catch (DateTimeParseException e) {
+            return val;
         }
     }
 }
