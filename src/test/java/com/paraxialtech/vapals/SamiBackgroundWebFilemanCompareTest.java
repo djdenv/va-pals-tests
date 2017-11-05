@@ -189,11 +189,13 @@ class SamiBackgroundWebFilemanCompareTest {
                     final Map<String, String> webValues = getWebValues(studyId);
                     final Map<String, String> filemanValues = getFilemanValues(studyId);
 
+                    int numMismatches = 0;
                     final StringBuilder sbMessage = new StringBuilder();
                     for (final Entry<String, String> entry : WEB_FILEMAN_KEY_MAP.entrySet()) {
                         if (webValues.containsKey(entry.getKey())) {
                             if (!filemanValues.containsKey(entry.getValue()) ||
                                 !webValues.get(entry.getKey()).equals(filemanValues.get(entry.getValue()))) {
+                                numMismatches++;
                                 sbMessage
                                     .append("web value '")
                                     .append(webValues.get(entry.getKey()))
@@ -209,7 +211,7 @@ class SamiBackgroundWebFilemanCompareTest {
                         }
                     }
 
-                    MatcherAssert.assertThat("Web/Fileman values do not match.\n" + sbMessage.toString(), sbMessage.length(), CoreMatchers.is(0));
+                    MatcherAssert.assertThat("Web/Fileman values do not match (" + numMismatches + ").\n" + sbMessage.toString(), numMismatches, CoreMatchers.is(0));
                 }
             };
             tests.add(DynamicTest.dynamicTest("Compare web/Fileman form values for study=" + studyId, executable));
@@ -224,10 +226,16 @@ class SamiBackgroundWebFilemanCompareTest {
 
         for (final WebElement webElement : driver.findElements(By.cssSelector("input,select,textarea"))) {
             String name = webElement.getAttribute("name");
+            // Skip elements with no name
             if (name == null || name.trim().length() == 0) {
                 continue;
             }
-            webValues.put(name, tryParseDate(WEB_DATE_FORMAT, webElement.getAttribute("value")));
+            // Skip radio buttons that are not checked
+            if (webElement.getAttribute("type").equals("radio") &&
+                !"checked".equals(webElement.getAttribute("checked"))) {
+                continue;
+            }
+            webValues.put(name, tryParse(webElement.getAttribute("value"), true));
         }
 
         return webValues;
@@ -297,7 +305,7 @@ class SamiBackgroundWebFilemanCompareTest {
                     break;
                 }
 
-                filemanValues.put(result.group(1), result.groupCount() == 1 ? "" : tryParseDate(FILEMAN_DATE_FORMAT, result.group(2)));
+                filemanValues.put(result.group(1), result.groupCount() == 1 ? "" : tryParse(result.group(2), false));
                 expect.sendLine();
             }
 //            expect.expect(Matchers.contains("Select OPTION:"));
@@ -332,7 +340,21 @@ class SamiBackgroundWebFilemanCompareTest {
         return filemanValues;
     }
 
-    private final String tryParseDate(final DateTimeFormatter fmt, final String val) {
+    private final String tryParse(String val, final boolean isWeb) {
+        // 1) If it's null / empty
+        if (val == null ||
+            val.trim().isEmpty()) {
+            return "";
+        }
+
+        // 2) If it's a date
+        val = tryParseDate(val, isWeb ? WEB_DATE_FORMAT : FILEMAN_DATE_FORMAT);
+
+        // 3) Done
+        return val;
+    }
+
+    private final String tryParseDate(final String val, final DateTimeFormatter fmt) {
         if (val == null ) {
             return null;
         }
