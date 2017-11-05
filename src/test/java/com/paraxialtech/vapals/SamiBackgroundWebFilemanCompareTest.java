@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterAll;
@@ -29,6 +30,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.Select;
 
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.Channel;
@@ -235,7 +237,13 @@ class SamiBackgroundWebFilemanCompareTest {
                 !"checked".equals(webElement.getAttribute("checked"))) {
                 continue;
             }
-            webValues.put(name, tryParse(webElement.getAttribute("value"), true));
+            // Get the text of the select option rather than its value
+            if ("select".equals(webElement.getTagName())) {
+                webValues.put(name, tryParse(new Select(webElement).getFirstSelectedOption().getText(), true));
+            }
+            else {
+                webValues.put(name, tryParse(webElement.getAttribute("value"), true));
+            }
         }
 
         return webValues;
