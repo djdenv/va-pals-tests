@@ -186,40 +186,59 @@ class SamiBackgroundWebFilemanCompareTest {
         List<DynamicTest> tests = new ArrayList<>();
 
         for (final String studyId : STUDY_IDS) {
+            final Map<String, String> filemanValuesBefore = getFilemanValues(studyId);
+            final Map<String, String> webValuesBefore = getWebValues(studyId);
+
+            // TODO: use a study id that is known to be suitable for this test
+//            final Map<String, String> filemanValuesAfter = changeFilemanValues(studyId);
+//            final Map<String, String> webValuesAfter = getWebValues(studyId);
+
             Executable executable = new Executable() {
                 @Override public void execute() throws Throwable {
-                    final Map<String, String> webValues = getWebValues(studyId);
-                    final Map<String, String> filemanValues = getFilemanValues(studyId);
-
-                    int numMismatches = 0;
-                    final StringBuilder sbMessage = new StringBuilder();
-                    for (final Entry<String, String> entry : WEB_FILEMAN_KEY_MAP.entrySet()) {
-                        if (webValues.containsKey(entry.getKey())) {
-                            if (!filemanValues.containsKey(entry.getValue()) ||
-                                !webValues.get(entry.getKey()).equals(filemanValues.get(entry.getValue()))) {
-                                numMismatches++;
-                                sbMessage
-                                    .append("web value '")
-                                    .append(webValues.get(entry.getKey()))
-                                    .append("' (")
-                                    .append(entry.getKey())
-                                    .append(") does not equal fileman value '")
-                                    .append(filemanValues.get(entry.getValue()))
-                                    .append("' (")
-                                    .append(entry.getValue())
-                                    .append(")\n")
-                                    ;
-                            }
-                        }
-                    }
-
-                    MatcherAssert.assertThat("Web/Fileman values do not match (" + numMismatches + ").\n" + sbMessage.toString(), numMismatches, CoreMatchers.is(0));
+                    final List<String> errors = compareWebFilemanValues(webValuesBefore, filemanValuesBefore);
+                    errors.add(0, "Web/Fileman ORIGINAL values for study:'" + studyId + "' do not match (" + errors.size() + ").");
+                    MatcherAssert.assertThat(String.join("\n", errors.toArray(new String[0])), errors.size(), CoreMatchers.is(0));
                 }
             };
             tests.add(DynamicTest.dynamicTest("Compare web/Fileman form values for study=" + studyId, executable));
+
+//            executable = new Executable() {
+//                @Override public void execute() throws Throwable {
+//                    final List<String> errors = compareWebFilemanValues(webValuesAfter, filemanValuesAfter);
+//                    errors.add(0, "Web/Fileman CHANGED values for study:'" + studyId + "' do not match (" + errors.size() + ").");
+//                    MatcherAssert.assertThat(String.join("\n", errors.toArray(new String[0])), errors.size(), CoreMatchers.is(0));
+//                }
+//            };
+//            tests.add(DynamicTest.dynamicTest("Compare web/Fileman form values for study=" + studyId, executable));
         }
 
         return tests.iterator();
+    }
+
+    private List<String> compareWebFilemanValues(final Map<String, String> webValues, final Map<String, String> filemanValues) {
+        final List<String> lstMismatches = new ArrayList<>();
+
+        for (final Entry<String, String> entry : WEB_FILEMAN_KEY_MAP.entrySet()) {
+            if (webValues.containsKey(entry.getKey())) {
+                if (!filemanValues.containsKey(entry.getValue()) ||
+                    !webValues.get(entry.getKey()).equals(filemanValues.get(entry.getValue()))) {
+                    lstMismatches.add(
+                        new StringBuilder()
+                            .append("web value '")
+                            .append(webValues.get(entry.getKey()))
+                            .append("' (")
+                            .append(entry.getKey())
+                            .append(") does not equal fileman value '")
+                            .append(filemanValues.get(entry.getValue()))
+                            .append("' (")
+                            .append(entry.getValue())
+                            .append(")")
+                            .toString());
+                }
+            }
+        }
+
+        return lstMismatches;
     }
 
     private Map<String, String> getWebValues(final String studyId) {
@@ -315,6 +334,106 @@ class SamiBackgroundWebFilemanCompareTest {
 
                 filemanValues.put(result.group(1), result.groupCount() == 1 ? "" : tryParse(result.group(2), false));
                 expect.sendLine();
+            }
+//            expect.expect(Matchers.contains("Select OPTION:"));
+            expect.sendLine("^");
+
+            // 6) Log out
+            expect.expect(Matchers.contains(">"));
+            expect.sendLine("HALT");
+
+            expect.expect(Matchers.contains("~$"));
+            expect.sendLine("exit");
+
+            expect.expect(Matchers.contains("~$"));
+            expect.sendLine("exit");
+
+            expect.expect(Matchers.eof());
+
+            expect.close();
+        } catch (JSchException e) {
+            Assertions.fail(String.format("Failed to connect to server='%s' with cert='%s' and user='%s'", SERVER, SSH_CERT, SSH_USER));
+        } catch (IOException e) {
+            Assertions.fail(String.format("Error communicating with server."));
+        } finally {
+            if (channel != null) {
+                channel.disconnect();
+            }
+            if (session != null) {
+                session.disconnect();
+            }
+        }
+
+        return filemanValues;
+    }
+
+    private Map<String, String> changeFilemanValues(final String studyId) {
+        Map<String, String> filemanValues = new HashMap<>();
+
+        Session session = null;
+        Channel channel = null;
+
+        try {
+            // 1) Login
+            JSch jSch = new JSch();
+            jSch.addIdentity(SSH_CERT);
+            session = jSch.getSession(SSH_USER, SERVER);
+            Properties config = new Properties();
+            config.put("StrictHostKeyChecking", "no");
+            session.setConfig(config);
+            session.connect();
+            channel = session.openChannel("shell");
+            channel.connect();
+
+            // 2) Set up the Expect object
+            Expect expect = new ExpectBuilder()
+                    .withOutput(channel.getOutputStream())
+                    .withInputs(channel.getInputStream(), channel.getExtInputStream())
+//                    .withEchoOutput(System.out)
+//                    .withEchoInput(System.err)
+//                    .withInputFilters(removeColors(), removeNonPrintable())
+                    .withExceptionOnFailure()
+                    .withTimeout(10, TimeUnit.SECONDS)
+                    .build();
+
+            // 3) Get to FileMan
+            expect.expect(Matchers.contains("~$"));
+            expect.sendLine("osehra");
+
+            expect.expect(Matchers.contains("~$"));
+            expect.sendLine("mumps -dir");
+
+            expect.expect(Matchers.contains(">"));
+            expect.sendLine("SET DUZ=1");
+
+            expect.expect(Matchers.contains(">"));
+            expect.sendLine("DO Q^DI");
+
+            // 4) Enter/edit file entries
+            expect.expect(Matchers.contains("Select OPTION:"));
+            expect.sendLine("1");
+
+            expect.expect(Matchers.contains("Input to what File:"));
+            expect.sendLine(FILEMAN_FORM);
+
+            expect.expect(Matchers.contains("EDIT WHICH FIELD:"));
+            expect.sendLine("ALL");
+
+            expect.expect(Matchers.contains("Select SAMI BACKGROUND STUDY ID:"));
+            expect.sendLine(studyId);
+
+            // 5) Loop through each entry, reverse those with values
+            Matcher<Result> matcherDone = Matchers.contains("Select OPTION:");
+            Matcher<Result> matcherItem = Matchers.regexp("[\r\n]+([^:]+):(?: (.+)//)?");
+            while (true) {
+                Result result = expect.expect(Matchers.anyOf(matcherDone, matcherItem));
+                if (matcherDone.matches(result.group(), false).isSuccessful()) {
+                    break;
+                }
+
+                final String value = result.groupCount() == 1 ? "" : new StringBuilder(tryParse(result.group(2), false)).reverse().toString();
+                filemanValues.put(result.group(1), value);
+                expect.sendLine(value);
             }
 //            expect.expect(Matchers.contains("Select OPTION:"));
             expect.sendLine("^");
