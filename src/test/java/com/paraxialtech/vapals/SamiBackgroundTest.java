@@ -1,24 +1,10 @@
 package com.paraxialtech.vapals;
 
-import static com.google.common.collect.Lists.newArrayList;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.fail;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-
-import org.apache.commons.lang3.RandomUtils;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.text.RandomStringGenerator;
 import org.hamcrest.CoreMatchers;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -32,8 +18,19 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static com.google.common.collect.Lists.newArrayList;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
+
 
 class SamiBackgroundTest {
     private final WebDriver driver = new HtmlUnitDriver();
@@ -41,22 +38,18 @@ class SamiBackgroundTest {
     private final String baseUrl = "http://avicenna.vistaexpertise.net:9080/form?form=sbform&studyid=PARAXIAL01";
     //    private final String baseUrl = "http://54.172.139.35:9080/form?form=sbform&studyId=PARAXIAL01";
     //    private final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
-//    private final String baseUrl = "http://vendev.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
+    //    private final String baseUrl = "http://vendev2.vistaplex.org:9080/form?form=sbform&studyId=PARAXIAL01";
+
     private final Set<String> ignoreFields = ImmutableSet.of(); //Temporarily ignore these fields so remaining tests can run. "sbwcos"
 
     private static final String ASCII_VALUE = "a Z  0!\\\"#$%^&*()-./<>=?@[]_`{}~";
+    private static final String EXTENDED_ASCII_VALUE = "È\u0089q§Òú_" + (char) 138;
 
     private List<WebElement> findElements(final WebDriver driver, final String selector) {
         return driver.findElements(By.cssSelector(selector)).stream()
                 .filter(WebElement::isEnabled)
                 .filter(webElement -> !ignoreFields.contains(webElement.getAttribute("name")))
                 .collect(Collectors.toList());
-    }
-
-
-    private String randomAsciiExt() {
-//        return new RandomStringGenerator.Builder().withinRange(32, 127).build().generate(length); //basic ASCII
-        return new RandomStringGenerator.Builder().withinRange(32, 255).build().generate(30);
     }
 
     @BeforeEach
@@ -143,39 +136,16 @@ class SamiBackgroundTest {
     }
 
     @TestFactory
-    Iterator<DynamicTest> testAsciiCharactersForTextFields() {
+    Iterator<DynamicTest> testAsciiSaveForTextFields() {
         // 1) Find <input type="text" name="???"> elements and collect their "name" attribute values
         final List<String> textFieldNames = findElements(driver, "input[type='text'][name]").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
 
         // 2) Make sure that these elements accept & reflect the pre-defined static ASCII text
-        return generateTextTests(textFieldNames, "ASCII - ", () -> ASCII_VALUE);
-    }
-
-    @TestFactory
-    Iterator<DynamicTest> testRandomCharactersForTextFields() {
-        // 1) Find <input type="text" name="???"> elements and collect their "name" attribute values
-        final List<String> textFieldNames = findElements(driver, "input[type='text'][name]").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
-
-        // 2) Make sure that these elements accept & reflect randomly-generated ASCII text
-        return generateTextTests(textFieldNames, "ASCII - ", this::randomAsciiExt);
-    }
-
-    @TestFactory
-    Iterator<DynamicTest> testPrintableCharactersForTextFields() {
-        // 1) Find <input type="text" name="???"> elements and collect their "name" attribute values
-        final List<String> textFieldNames = findElements(driver, "input[type='text'][name]").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
-
-        // 2) Make sure that these elements accept and reflect some pre-defined printable (Unicode) characters
-        return generateTextTests(textFieldNames, "Printable - ", () -> "È\u0089q§Òú_" + (char) 138);
-    }
-
-    private Iterator<DynamicTest> generateTextTests(final List<String> fieldNames, final String prefix, final Supplier<String> value) {
-        // 1) For each element name, add a test to ensure that the element accepts and reflects the given value
-        return fieldNames.stream().map(textFieldName -> DynamicTest.dynamicTest(prefix + textFieldName, () -> {
-            final WebElement textField = driver.findElement(By.name(textFieldName));    // 1.1) Find the element (with Selenium)
-            final String asciiText = value.get();
-            assertNotNull(textField, "Could not find field by name " + textFieldName);  // 1.2) Sanity check: make sure we found the element
-            textField.clear();                                                          // 1.3) Set the element's value to be the test input
+        return textFieldNames.stream().map(textFieldName -> DynamicTest.dynamicTest("ASCII - " + textFieldName, () -> {
+            final WebElement textField = driver.findElement(By.name(textFieldName));
+            final String asciiText = ASCII_VALUE;
+            assertNotNull(textField, "Could not find field by name " + textFieldName);
+            textField.clear();
             textField.sendKeys(asciiText);
             textField.submit();                                                         // 1.4) Submit the element's value
             driver.navigate().to(baseUrl);                                              // 1.5) Reload the initial page
@@ -185,14 +155,39 @@ class SamiBackgroundTest {
         })).iterator();
     }
 
+
     /**
      * This is nearly identical to {@link #testAsciiCharactersForTextFields()}
      *
      * @return
      */
     @TestFactory
-    Iterator<DynamicTest> testSaveAllText() {
-        final List<String> textFieldNames = findElements(driver, "input[type='text']").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
+    Iterator<DynamicTest> testExtendedAsciiSaveForTextFields() {
+        final List<String> textFieldNames = findElements(driver, "input[type='text'][name]").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
+        return textFieldNames.stream().map(textFieldName -> DynamicTest.dynamicTest("Extended ASCII - " + textFieldName, () -> {
+            final String validText = "1"; //covers date and numeric fields
+
+            final WebElement textField = driver.findElement(By.name(textFieldName));
+            textField.clear();
+            textField.sendKeys(validText);
+            textField.submit();
+            driver.navigate().to(baseUrl); //reload the initial page
+            assertThat("Incorrect pre-test value in text field " + textField.toString(), driver.findElement(By.name(textFieldName)).getAttribute("value"), is(validText));
+
+            final WebElement textField2 = driver.findElement(By.name(textFieldName));
+            assertNotNull(textField2, "Could not find field by name " + textFieldName);
+            textField2.clear();
+            textField2.sendKeys(EXTENDED_ASCII_VALUE);
+            textField2.submit();
+            driver.navigate().to(baseUrl); //reload the initial page
+            assertThat("Expected failure to save of field " + textFieldName, driver.findElement(By.name(textFieldName)).getAttribute("value"), is(validText));
+        })).iterator();
+
+    }
+
+    @TestFactory
+    Iterator<DynamicTest> testSaveEachTextField() {
+        final List<String> textFieldNames = findElements(driver, "input[type='text'][name]").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
         return textFieldNames.stream().map(textFieldName -> DynamicTest.dynamicTest("Test save text " + textFieldName, () -> {
             final WebElement textField = driver.findElement(By.name(textFieldName));
             final String asciiText = ASCII_VALUE;
@@ -201,12 +196,12 @@ class SamiBackgroundTest {
             textField.sendKeys(asciiText);
             textField.submit();
             driver.navigate().to(baseUrl); //reload the initial page
-            assertThat("Incorrect value in text field " + textFieldName, driver.findElement(By.name(textFieldName)).getAttribute("value"), is(asciiText));
+            assertThat("Incorrect value in text field " + textField.toString(), driver.findElement(By.name(textFieldName)).getAttribute("value"), is(asciiText));
         })).iterator();
     }
 
     @TestFactory
-    Iterator<DynamicTest> testSaveAllDropdowns() {
+    Iterator<DynamicTest> testSaveEachDropdown() {
         // 1) Find <select> elements and collect their "name" attribute values
         final List<String> dropdownNames = findElements(driver, "select").stream().map(webElement -> webElement.getAttribute("name")).collect(Collectors.toList());
 
@@ -215,50 +210,53 @@ class SamiBackgroundTest {
             // 2.1) Get the list of possible values for this dropdown element
             final WebElement dropdown = driver.findElement(By.name(dropdownName));
             final List<WebElement> options = dropdown.findElements(By.tagName("option"));
+            // 2.2) Choose each option
+            for (WebElement selectedOption : options) {
+                selectedOption.click();
+                String savedValue = selectedOption.getAttribute("value");
 
-            // 2.2) Choose one randomly and select it
-            final WebElement selectedOption = options.get(RandomUtils.nextInt(0, options.size()));
-            selectedOption.click();
-            String savedValue = selectedOption.getAttribute("value");
+                // 2.3) Submit the element
+                dropdown.submit();
 
-            // 2.3) Submit the element
-            dropdown.submit();
+                // 2.4) Reload the initial page
+                driver.navigate().to(baseUrl); //reload the initial page
 
-            // 2.4) Reload the initial page
-            driver.navigate().to(baseUrl);
+                // 2.5) Find the dropdown element
+                WebElement updatedDropdown = driver.findElement(By.name(dropdownName));
+                assertNotNull(updatedDropdown, "No dropdown by name of " + dropdownName);
 
-            // 2.5) Find the dropdown element
-            WebElement updatedDropdown = driver.findElement(By.name(dropdownName));
-            assertNotNull(updatedDropdown, "No dropdown by name of " + dropdownName);
+                // 2.6) Get its selected value
+                final WebElement updatedOption = updatedDropdown.findElement(By.cssSelector("option[selected]"));
+                assertNotNull(selectedOption, "No selected option for dropdown " + dropdownName);
 
-            // 2.6) Get its selected value
-            final WebElement updatedOption = updatedDropdown.findElement(By.cssSelector("option[selected]"));
-            assertNotNull(selectedOption, "No selected option for dropdown " + dropdownName);
-
-            // 2.7) Read the value and compare to what we set it to in step 2.2
-            final String actual = updatedOption.getAttribute("value");
-            assertThat("Incorrect value in dropdown field " + dropdownName, actual, is(savedValue));
-
+                // 2.7) Read the value and compare to what we set it to in step 2.2
+                final String actual = updatedOption.getAttribute("value");
+                assertThat("Incorrect value in dropdown field " + selectedOption.toString(), actual, is(savedValue));
+            }
         })).iterator();
     }
 
     @TestFactory
-    Iterator<DynamicTest> testSaveAllRadios() {
+    Iterator<DynamicTest> testSaveEachRadio() {
         // 1) Find <input type="radio"> elements and collect their "name" attribute values
         final Set<String> radioElementGroups = findElements(driver, "input[type='radio']").stream().map(webElement -> webElement.getAttribute("name")).distinct().collect(Collectors.toSet());
 
         // 2) For each name from step 1, add a test
         return radioElementGroups.stream().map(radioGroupName -> DynamicTest.dynamicTest("Test save radio " + radioGroupName, () -> {
+
+            final String selector = "input[type='radio'][name='" + radioGroupName + "']";
+
             // 3) Find the element by name, select each of its options in turn and make sure it reflects back after submitting
-            final List<WebElement> radioOptions = findElements(driver, "input[type='radio'][name='" + radioGroupName + "']");
-            for (WebElement option : radioOptions) {
+            final List<WebElement> radioOptions = findElements(driver, selector);
+            for (int i = 0; i < radioOptions.size(); i++) {
                 // 3.1) Select the value and submit
+                WebElement option = findElements(driver, selector).get(i);
                 String submittedValue = option.getAttribute("value");
                 option.click();
                 option.submit();
 
                 // 3.2) Reload the initial page
-                driver.navigate().to(baseUrl);
+                driver.navigate().to(baseUrl); //reload the initial page
 
                 // 3.3) Find the element again, and find the selected option
                 final WebElement updatedOption = driver.findElement(By.cssSelector("input[type=radio][name=" + radioGroupName + "]:checked"));
@@ -273,7 +271,7 @@ class SamiBackgroundTest {
     }
 
     @TestFactory
-    Iterator<DynamicTest> testSaveAllTextAreas() {
+    Iterator<DynamicTest> testSaveEachTextArea() {
         // 1) Find <textarea> elements and collect their "name" attribute values
         final Set<String> textAreaNames = findElements(driver, "textarea").stream().map(webElement -> webElement.getAttribute("name")).distinct().collect(Collectors.toSet());
 
@@ -284,7 +282,7 @@ class SamiBackgroundTest {
             assertNotNull(textarea, "No textarea by name of " + textAreaName);
 
             // 2.2) Set the element's value to be the test input, then submit
-            final String submittedValue = ASCII_VALUE + "\n\n\t" + ASCII_VALUE + "\n";
+            final String submittedValue = ASCII_VALUE + "\r\n\r\n\t" + ASCII_VALUE + "\n";
             textarea.clear();
             textarea.sendKeys(submittedValue);
             textarea.submit();
